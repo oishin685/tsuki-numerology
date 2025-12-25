@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>月の数秘® 自動計算</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Oswald:wght@700&family=Noto+Sans+JP:wght@400;700&display=swap');
+
+        body {
+            font-family: 'Noto Sans JP', sans-serif;
+            background-color: #fdfdfd;
+            color: #1a1a1a;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            background: #ffffff;
+            padding: 3vw;
+            width: 100%;
+            max-width: 1400px;
+            box-sizing: border-box;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.08);
+        }
+
+        h1 {
+            font-family: 'Noto Serif JP', serif;
+            text-align: center;
+            margin-bottom: 30px;
+            color: #333;
+            letter-spacing: 0.1em;
+            font-size: clamp(1.2rem, 3vw, 2rem);
+        }
+
+        /* --- 入力エリア --- */
+        .input-area {
+            background: #f4f4f4;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 40px;
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: flex-end;
+        }
+        .input-group { display: flex; flex-direction: column; width: auto; flex-grow: 1; max-width: 200px; }
+        label { font-size: 0.8rem; font-weight: bold; margin-bottom: 5px; color: #555; }
+        input {
+            padding: 10px; border: 1px solid #ccc; border-radius: 4px;
+            font-size: 1rem; width: 100%; box-sizing: border-box;
+        }
+        button.btn-calc {
+            background: #111; color: #fff; border: none; padding: 12px 30px;
+            font-size: 1rem; border-radius: 4px; cursor: pointer; font-weight: bold;
+            transition: background 0.2s;
+            height: 45px;
+            white-space: nowrap;
+        }
+        button.btn-calc:hover { background: #333; }
+
+
+        /* --- 結果エリア --- */
+        #result-area { display: none; width: 100%; }
+        
+        .name-header {
+            text-align: center;
+            margin-bottom: 40px;
+            border-bottom: 2px solid #000;
+            padding-bottom: 10px;
+        }
+        .disp-name-romaji {
+            font-family: 'Oswald', sans-serif;
+            font-size: clamp(2rem, 6vw, 4rem); 
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            line-height: 1;
+            word-break: break-all;
+        }
+
+        /* --- グリッドレイアウトシステム --- */
+        .numerology-grid {
+            display: grid;
+            grid-template-columns: repeat(12, 1fr);
+            gap: 10px 0;
+            width: 100%;
+            margin-bottom: 40px;
+        }
+
+        /* セクション見出しスタイル */
+        .section-header {
+            grid-column: 1 / 13;
+            font-size: 0.9rem;
+            font-weight: bold;
+            color: #fff;
+            background-color: #333;
+            padding: 8px 5px;
+            border-radius: 4px;
+            margin-top: 20px;
+            margin-bottom: 15px;
+            text-align: center;
+            letter-spacing: 0.05em;
+        }
+
+        /* 共通カードスタイル */
+        .num-card {
+            text-align: center;
+            padding: 5px 2px;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            align-items: center;
+            overflow: hidden;
+        }
+        
+        /* 数字のデザイン */
+        .value-main {
+            font-family: 'Oswald', sans-serif;
+            font-size: clamp(1.8rem, 5vw, 4.5rem); 
+            font-weight: 700;
+            line-height: 0.9;
+            color: #000;
+            margin-bottom: 5px;
+            white-space: nowrap;
+        }
+        .value-sub-text {
+            font-size: 0.4em; 
+            color: #666;
+            font-family: 'Oswald', sans-serif;
+            margin-left: 2px;
+            vertical-align: baseline;
+        }
+        .label-text {
+            font-size: clamp(0.6rem, 1.2vw, 0.85rem);
+            font-weight: bold;
+            color: #333;
+            margin-top: 5px;
+            display: block;
+            border-top: 1px solid #ddd;
+            padding-top: 5px;
+            width: 90%;
+            line-height: 1.2;
+            white-space: nowrap;
+        }
+
+        /* --- 配置定義 --- */
+        /* 1行目: 誕生日見出し */
+        .header-birth { grid-row: 1; margin-top: 0; }
+
+        /* 2行目: メイン6数字 */
+        .row-main-birth { grid-row: 2; }
+        .pos-past    { grid-column: 1 / 3; }
+        .pos-present { grid-column: 3 / 5; }
+        .pos-future  { grid-column: 5 / 7; }
+        .pos-message { grid-column: 7 / 9; }
+        .pos-answer  { grid-column: 9 / 11; }
+        .pos-star    { grid-column: 11 / 13; }
+
+        /* 3行目: サブ3数字 */
+        .row-sub-birth { grid-row: 3; }
+        .pos-nature   { grid-column: 2 / 4; }
+        .pos-personal { grid-column: 4 / 6; }
+        .pos-earth    { grid-column: 6 / 8; }
+
+        /* サブ数字用のスタイル調整 */
+        .sub-card {
+            transform: scale(0.9);
+            transform-origin: top center;
+            opacity: 0.95;
+            margin-top: -5px;
+        }
+        .sub-card .value-main { 
+            font-size: clamp(1.5rem, 3.5vw, 3rem); 
+            color: #444; 
+        }
+        .sub-card .label-text { color: #666; border-top-color: #eee; }
+        .connector {
+            position: absolute; top: -15px; left: 50%; transform: translateX(-50%);
+            width: 1px; height: 15px; background: #ddd;
+        }
+
+        /* 4行目: 名前見出し */
+        .header-name { grid-row: 4; margin-top: 30px; }
+
+        /* 5行目: 名前6数字 */
+        .row-name { grid-row: 5; }
+        .pos-lp { grid-column: 1 / 3; }
+        .pos-d  { grid-column: 3 / 5; }
+        .pos-s  { grid-column: 5 / 7; }
+        .pos-p  { grid-column: 7 / 9; }
+        .pos-m  { grid-column: 9 / 11; }
+        .pos-b  { grid-column: 11 / 13; }
+        
+        .name-card .value-main { 
+             font-size: clamp(1.5rem, 4vw, 3.5rem);
+        }
+
+        /* コピーボタン */
+        .btn-copy {
+            display: block; width: 100%; max-width: 300px; margin: 30px auto 0;
+            background: #fff; color: #333; border: 2px solid #333;
+            padding: 15px; font-weight: bold; cursor: pointer;
+            transition: 0.3s; text-align: center;
+            font-size: 0.9rem;
+        }
+        .btn-copy:hover { background: #333; color: #fff; }
+
+        @media (max-width: 600px) {
+            .container { padding: 10px; }
+            .numerology-grid { gap: 2px 0; }
+        }
+
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>月の数秘®　自動計算</h1>
+
+    <div class="input-area">
+        <div class="input-group">
+            <label>生年月日</label>
+            <input type="date" id="birthdate">
+        </div>
+        <div class="input-group">
+            <label>姓（ローマ字）</label>
+            <input type="text" id="lastNameRoma" placeholder="XU">
+        </div>
+        <div class="input-group">
+            <label>名（ローマ字）</label>
+            <input type="text" id="firstNameRoma" placeholder="PING">
+        </div>
+        <button class="btn-calc" onclick="calculateAll()">計算</button>
+    </div>
+
+    <div id="result-area">
+        <div class="name-header">
+            <div class="disp-name-romaji" id="disp-name">NAME HERE</div>
+        </div>
+
+        <div class="numerology-grid">
+            
+            <div class="section-header header-birth">誕生日から導き出す６つの数字</div>
+
+            <div class="num-card row-main-birth pos-past">
+                <div class="value-main" id="val-past">-</div>
+                <span class="label-text">過去数</span>
+            </div>
+            <div class="num-card row-main-birth pos-present">
+                <div class="value-main" id="val-present">-</div>
+                <span class="label-text">現在数</span>
+            </div>
+            <div class="num-card row-main-birth pos-future">
+                <div class="value-main" id="val-future">-</div>
+                <span class="label-text">未来数</span>
+            </div>
+            <div class="num-card row-main-birth pos-message">
+                <div class="value-main" id="val-message">-</div>
+                <span class="label-text">メッセージ数</span>
+            </div>
+            <div class="num-card row-main-birth pos-answer">
+                <div class="value-main" id="val-answer">-</div>
+                <span class="label-text">アンサー数</span>
+            </div>
+            <div class="num-card row-main-birth pos-star">
+                <div class="value-main" id="val-star">-</div>
+                <span class="label-text">スター数</span>
+            </div>
+
+            <div class="num-card sub-card row-sub-birth pos-nature">
+                <div class="connector"></div>
+                <div class="value-main" id="val-nature">-</div>
+                <span class="label-text">素質</span>
+            </div>
+            <div class="num-card sub-card row-sub-birth pos-personal">
+                <div class="connector"></div>
+                <div class="value-main" id="val-personal">-</div>
+                <span class="label-text">性格</span>
+            </div>
+            <div class="num-card sub-card row-sub-birth pos-earth">
+                <div class="connector"></div>
+                <div class="value-main" id="val-earth">-</div>
+                <span class="label-text">地球星座</span>
+            </div>
+
+            <div class="section-header header-name">名前と合わせて導き出す数字</div>
+
+            <div class="num-card name-card row-name pos-lp">
+                <div class="value-main" id="val-lp">-</div>
+                <span class="label-text">LP<br>（ライフパスナンバー）</span>
+            </div>
+            <div class="num-card name-card row-name pos-d">
+                <div class="value-main" id="val-d">-</div>
+                <span class="label-text">D<br>（ディスティニーナンバー）</span>
+            </div>
+            <div class="num-card name-card row-name pos-s">
+                <div class="value-main" id="val-s">-</div>
+                <span class="label-text">S<br>（ソウルナンバー）</span>
+            </div>
+            <div class="num-card name-card row-name pos-p">
+                <div class="value-main" id="val-p">-</div>
+                <span class="label-text">P<br>（パーソナリティーナンバー）</span>
+            </div>
+            <div class="num-card name-card row-name pos-m">
+                <div class="value-main" id="val-m">-</div>
+                <span class="label-text">M<br>（マチュリティーナンバー）</span>
+            </div>
+            <div class="num-card name-card row-name pos-b">
+                <div class="value-main" id="val-b">-</div>
+                <span class="label-text">B<br>（バースナンバー）</span>
+            </div>
+
+        </div>
+
+        <button class="btn-copy" onclick="copyToClipboard()">結果テキストをコピー</button>
+    </div>
+</div>
+
+<script>
+    // --- 計算ロジック ---
+    const ALPHABET_MAP = {
+        'A':1, 'J':1, 'S':1, 'B':2, 'K':2, 'T':2,
+        'C':3, 'L':3, 'U':3, 'D':4, 'M':4, 'V':4,
+        'E':5, 'N':5, 'W':5, 'F':6, 'O':6, 'X':6,
+        'G':7, 'P':7, 'Y':7, 'H':8, 'Q':8, 'Z':8,
+        'I':9, 'R':9
+    };
+    const VOWELS = ['A', 'I', 'U', 'E', 'O'];
+
+    function reduceNumber(num) {
+        let n = parseInt(num);
+        if (n === 110) return 11;
+        while (n > 9 && n !== 11 && n !== 22 && n !== 33) {
+            n = n.toString().split('').reduce((acc, c) => acc + parseInt(c), 0);
+        }
+        return n;
+    }
+
+    function sumDigits(str) {
+        return str.toString().split('').reduce((acc, c) => acc + parseInt(c), 0);
+    }
+
+    function createNumObj(rawVal) {
+        return { raw: rawVal, reduced: reduceNumber(rawVal) };
+    }
+
+    function getNameSumRaw(nameStr, type = 'ALL') {
+        let sum = 0;
+        for (let char of nameStr) {
+            if (!ALPHABET_MAP[char]) continue;
+            const isVowel = VOWELS.includes(char);
+            const val = ALPHABET_MAP[char];
+            if (type === 'ALL') sum += val;
+            else if (type === 'VOWEL' && isVowel) sum += val;
+            else if (type === 'CONSONANT' && !isVowel) sum += val;
+        }
+        return sum;
+    }
+
+    function calculateAll() {
+        const birthDateStr = document.getElementById('birthdate').value;
+        const lastName = document.getElementById('lastNameRoma').value.toUpperCase().replace(/[^A-Z]/g, '');
+        const firstName = document.getElementById('firstNameRoma').value.toUpperCase().replace(/[^A-Z]/g, '');
+
+        if (!birthDateStr || !lastName || !firstName) {
+            alert("全ての項目を入力してください"); return;
+        }
+
+        const fullName = lastName + firstName;
+        const [year, month, day] = birthDateStr.split('-');
+
+        // --- メイン計算 ---
+        const pastRaw = parseInt(day); 
+        const pastObj = createNumObj(pastRaw);
+
+        const yearSum = sumDigits(year);
+        const monthSum = sumDigits(month);
+        const daySum = sumDigits(day);
+        const lpRaw = yearSum + monthSum + daySum; 
+        const lpObj = createNumObj(lpRaw);
+        const presentObj = lpObj; 
+
+        const futureRaw = monthSum + daySum;
+        const futureObj = createNumObj(futureRaw);
+
+        const msgRawVal = pastObj.raw + presentObj.raw + futureObj.raw;
+        const messageObj = createNumObj(msgRawVal); 
+
+        const ansRawVal = messageObj.raw + messageObj.reduced;
+        const answerObj = createNumObj(ansRawVal);
+
+        const starRawVal = futureObj.raw + answerObj.raw;
+        const starObj = createNumObj(starRawVal);
+
+        // --- 予備計算 ---
+        const natureVal = pastObj.raw + presentObj.raw;
+        const personalVal = presentObj.raw + futureObj.raw;
+        const earthVal = futureObj.raw + messageObj.raw;
+
+        // --- 名前計算 ---
+        const lastNameRaw = getNameSumRaw(lastName, 'ALL');
+        const firstNameRaw = getNameSumRaw(firstName, 'ALL');
+        const dRaw = lastNameRaw + firstNameRaw;
+        const dObj = createNumObj(dRaw);
+
+        const sRaw = getNameSumRaw(fullName, 'VOWEL');
+        const sObj = createNumObj(sRaw);
+        
+        const pRaw = getNameSumRaw(fullName, 'CONSONANT');
+        const pObj = createNumObj(pRaw);
+
+        const mRaw = lpObj.raw + dObj.raw;
+        const mObj = createNumObj(mRaw);
+        const bObj = pastObj;
+
+        // --- 表示反映 ---
+        document.getElementById('disp-name').innerText = `${lastName} ${firstName}`;
+
+        const renderVal = (id, obj) => {
+            const el = document.getElementById(id);
+            if(obj.raw !== obj.reduced) {
+                el.innerHTML = `${obj.reduced}<span class="value-sub-text">/ ${obj.raw}</span>`;
+            } else {
+                el.innerText = obj.reduced;
+            }
+        };
+
+        renderVal('val-past', pastObj);
+        renderVal('val-present', presentObj);
+        renderVal('val-future', futureObj);
+        renderVal('val-message', messageObj);
+        renderVal('val-answer', answerObj);
+        renderVal('val-star', starObj);
+
+        document.getElementById('val-nature').innerText = natureVal;
+        document.getElementById('val-personal').innerText = personalVal;
+        document.getElementById('val-earth').innerText = earthVal;
+
+        renderVal('val-lp', lpObj);
+        renderVal('val-d', dObj);
+        renderVal('val-s', sObj);
+        renderVal('val-p', pObj);
+        renderVal('val-m', mObj);
+        renderVal('val-b', bObj);
+
+        document.getElementById('result-area').style.display = 'block';
+    }
+
+    function copyToClipboard() {
+        const name = document.getElementById('disp-name').innerText;
+        
+        let text = `【月の数秘®︎ 計算結果】\n`;
+        text += `NAME: ${name}\n\n`;
+        
+        text += `[誕生日から導き出す数字]\n`;
+        text += `過去数: ${getText('val-past')}\n`;
+        text += `現在数: ${getText('val-present')}\n`;
+        text += `未来数: ${getText('val-future')}\n`;
+        text += `メッセージ数: ${getText('val-message')}\n`;
+        text += `アンサー数: ${getText('val-answer')}\n`;
+        text += `スター数: ${getText('val-star')}\n\n`;
+
+        text += `[性質]\n`;
+        text += `素質: ${document.getElementById('val-nature').innerText}\n`;
+        text += `性格: ${document.getElementById('val-personal').innerText}\n`;
+        text += `地球星座: ${document.getElementById('val-earth').innerText}\n\n`;
+
+        text += `[名前と合わせて導き出す数字]\n`;
+        text += `LP (ライフパスナンバー): ${getText('val-lp')}\n`;
+        text += `D (ディスティニーナンバー): ${getText('val-d')}\n`;
+        text += `S (ソウルナンバー): ${getText('val-s')}\n`;
+        text += `P (パーソナリティーナンバー): ${getText('val-p')}\n`;
+        text += `M (マチュリティーナンバー): ${getText('val-m')}\n`;
+        text += `B (バースナンバー): ${getText('val-b')}`;
+
+        navigator.clipboard.writeText(text).then(() => {
+            alert("結果をコピーしました");
+        });
+    }
+
+    function getText(id) {
+        return document.getElementById(id).innerText.replace('/', ' / ').replace(/\n/g, ' ');
+    }
+</script>
+
+</body>
+</html>
